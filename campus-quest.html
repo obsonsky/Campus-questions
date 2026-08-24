@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Campus Quest</title>
+<style>
+  :root{
+    --sky-top:#FF9A3C;
+    --sky-bottom:#FFD166;
+    --grass:#2D6A4F;
+    --grass-dark:#1B4332;
+    --path:#E9C46A;
+    --ink:#1B1B1B;
+    --paper:#FFF8EC;
+    --accent:#E63946;
+    --accent-dark:#9D1E28;
+    --gold:#F4A261;
+    --card:#FFFFFF;
+    --muted:#6B6B63;
+    --done:#2D6A4F;
+  }
+  * { box-sizing: border-box; }
+  body{
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    background:linear-gradient(180deg,var(--sky-top),var(--sky-bottom) 55%,var(--grass));
+    min-height:100vh;
+    padding:14px;
+    color:var(--ink);
+  }
+  .app{max-width:420px;margin:0 auto;}
+  .header{
+    text-align:center;
+    padding:6px 0 12px;
+  }
+  .header h1{
+    font-size:22px;
+    margin:0;
+    letter-spacing:0.5px;
+    color:#fff;
+    text-shadow:0 2px 0 rgba(0,0,0,0.25);
+  }
+  .header p{
+    margin:4px 0 0;
+    font-size:13px;
+    color:#fff;
+    opacity:0.9;
+  }
+  .hud{
+    display:flex;
+    justify-content:space-between;
+    gap:8px;
+    background:var(--paper);
+    border:2px solid var(--ink);
+    border-radius:10px;
+    padding:8px 12px;
+    margin-bottom:10px;
+    font-size:13px;
+  }
+  .hud div{display:flex;flex-direction:column;align-items:center;flex:1;}
+  .hud b{font-size:15px;}
+  .energy-bar{
+    height:8px;
+    width:100%;
+    background:#E0D9C5;
+    border-radius:4px;
+    overflow:hidden;
+    margin-top:3px;
+    border:1px solid var(--ink);
+  }
+  .energy-fill{
+    height:100%;
+    background:var(--accent);
+    transition:width 0.25s;
+  }
+  .board-wrap{
+    background:var(--grass-dark);
+    border:3px solid var(--ink);
+    border-radius:12px;
+    padding:6px;
+    margin-bottom:12px;
+  }
+  .board{
+    display:grid;
+    grid-template-columns:repeat(7,1fr);
+    grid-template-rows:repeat(6,1fr);
+    gap:2px;
+    height:300px;
+  }
+  .cell{
+    position:relative;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:15px;
+    border-radius:4px;
+    background:var(--grass);
+  }
+  .cell.path{background:var(--path);}
+  .cell.building{
+    background:var(--gold);
+    font-size:17px;
+    border:1px solid rgba(0,0,0,0.25);
+  }
+  .cell.building.done{background:var(--done);}
+  .cell .label{
+    position:absolute;
+    bottom:-1px;
+    font-size:6px;
+    font-weight:600;
+    color:var(--ink);
+    background:rgba(255,255,255,0.75);
+    padding:0 2px;
+    border-radius:2px;
+    white-space:nowrap;
+    display:none;
+  }
+  .player{
+    font-size:18px;
+    z-index:2;
+    filter:drop-shadow(0 2px 1px rgba(0,0,0,0.35));
+    transition:transform 0.15s;
+  }
+  .controls{
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    gap:18px;
+    margin-bottom:14px;
+  }
+  .dpad{
+    display:grid;
+    grid-template-columns:repeat(3,44px);
+    grid-template-rows:repeat(3,44px);
+    gap:4px;
+  }
+  .dpad button{
+    border:2px solid var(--ink);
+    background:var(--paper);
+    border-radius:8px;
+    font-size:18px;
+    font-weight:700;
+    color:var(--ink);
+    touch-action:manipulation;
+  }
+  .dpad button:active{background:var(--gold);}
+  .dpad .up{grid-column:2;grid-row:1;}
+  .dpad .left{grid-column:1;grid-row:2;}
+  .dpad .action{grid-column:2;grid-row:2;background:var(--accent);color:#fff;font-size:11px;}
+  .dpad .right{grid-column:3;grid-row:2;}
+  .dpad .down{grid-column:2;grid-row:3;}
+  .msg{
+    min-height:38px;
+    background:var(--paper);
+    border:2px solid var(--ink);
+    border-radius:10px;
+    padding:8px 10px;
+    font-size:13px;
+    margin-bottom:12px;
+    text-align:center;
+  }
+  .tasks{
+    background:var(--card);
+    border:2px solid var(--ink);
+    border-radius:10px;
+    padding:10px 12px;
+    margin-bottom:12px;
+  }
+  .tasks h2{
+    font-size:14px;
+    margin:0 0 8px;
+  }
+  .task{
+    display:flex;
+    align-items:flex-start;
+    gap:8px;
+    font-size:13px;
+    padding:5px 0;
+    border-bottom:1px solid #EEE;
+    color:var(--muted);
+  }
+  .task:last-child{border-bottom:none;}
+  .task.active{color:var(--ink);font-weight:600;}
+  .task.complete{color:var(--done);text-decoration:line-through;}
+  .task .box{
+    flex-shrink:0;
+    width:16px;height:16px;
+    border:2px solid var(--ink);
+    border-radius:3px;
+    margin-top:1px;
+  }
+  .task.complete .box{background:var(--done);border-color:var(--done);}
+  .overlay{
+    position:fixed;inset:0;
+    background:rgba(0,0,0,0.55);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+    z-index:10;
+  }
+  .overlay.show{display:flex;}
+  .overlay-card{
+    background:var(--paper);
+    border:3px solid var(--ink);
+    border-radius:14px;
+    padding:20px;
+    max-width:320px;
+    text-align:center;
+  }
+  .overlay-card h2{margin:0 0 8px;font-size:19px;}
+  .overlay-card p{font-size:13px;color:var(--muted);margin:0 0 14px;}
+  .overlay-card button{
+    border:2px solid var(--ink);
+    background:var(--accent);
+    color:#fff;
+    font-weight:700;
+    padding:10px 18px;
+    border-radius:8px;
+    font-size:14px;
+  }
+  .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <h1>Campus quest</h1>
+    <p>Aide Awa à finir sa journée avant la tombée de la nuit</p>
+  </div>
+
+  <div class="hud">
+    <div>
+      <span>Heure</span>
+      <b id="time-out">7h00</b>
+    </div>
+    <div>
+      <span>Tâches</span>
+      <b id="tasks-out">0/5</b>
+    </div>
+    <div style="flex:1.4;">
+      <span>Énergie</span>
+      <div class="energy-bar"><div class="energy-fill" id="energy-fill" style="width:100%"></div></div>
+    </div>
+  </div>
+
+  <div class="board-wrap">
+    <div class="board" id="board" role="img" aria-label="Carte du campus"></div>
+  </div>
+
+  <div class="msg" id="msg">Déplace Awa avec les flèches. Arrive sur un bâtiment en surbrillance puis appuie sur Agir.</div>
+
+  <div class="controls">
+    <div class="dpad">
+      <button class="up" id="btn-up" aria-label="Haut">▲</button>
+      <button class="left" id="btn-left" aria-label="Gauche">◀</button>
+      <button class="action" id="btn-action">Agir</button>
+      <button class="right" id="btn-right" aria-label="Droite">▶</button>
+      <button class="down" id="btn-down" aria-label="Bas">▼</button>
+    </div>
+  </div>
+
+  <div class="tasks">
+    <h2>Tâches du jour</h2>
+    <div id="task-list"></div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="overlay-card">
+    <h2 id="overlay-title">Bravo !</h2>
+    <p id="overlay-text"></p>
+    <button id="overlay-btn">Rejouer</button>
+  </div>
+</div>
+
+<script>
+const COLS = 7, ROWS = 6;
+const START_ENERGY = 100;
+const MOVE_COST = 3;
+
+const buildings = [
+  {id:'biblio', x:1, y:1, icon:'📚', name:'Bibliothèque', task:"Emprunter un livre à la bibliothèque"},
+  {id:'amphi', x:5, y:0, icon:'🎓', name:'Amphi', task:"Assister au cours de 8h en amphi"},
+  {id:'cafet', x:3, y:1, icon:'☕', name:'Cafétéria', task:"Retrouver ses amis à la cafétéria"},
+  {id:'resto', x:1, y:4, icon:'🍲', name:'Resto-U', task:"Manger au Resto-U"},
+  {id:'secret', x:5, y:4, icon:'📝', name:'Secrétariat', task:"Déposer son dossier au secrétariat"},
+];
+
+let player = {x:0, y:5};
+let energy = START_ENERGY;
+let completed = new Set();
+let cells = [];
+
+const boardEl = document.getElementById('board');
+const msgEl = document.getElementById('msg');
+const energyFill = document.getElementById('energy-fill');
+const timeOut = document.getElementById('time-out');
+const tasksOut = document.getElementById('tasks-out');
+const taskListEl = document.getElementById('task-list');
+const overlay = document.getElementById('overlay');
+
+function buildingAt(x,y){
+  return buildings.find(b => b.x === x && b.y === y);
+}
+
+function buildBoard(){
+  boardEl.innerHTML = '';
+  cells = [];
+  for(let y=0;y<ROWS;y++){
+    const row = [];
+    for(let x=0;x<COLS;x++){
+      const cell = document.createElement('div');
+      const b = buildingAt(x,y);
+      cell.className = 'cell' + ((x+y)%2===0 ? ' path' : '');
+      if(b){
+        cell.className = 'cell building';
+        cell.dataset.id = b.id;
+        cell.textContent = b.icon;
+      }
+      boardEl.appendChild(cell);
+      row.push(cell);
+    }
+    cells.push(row);
+  }
+  render();
+}
+
+function render(){
+  for(let y=0;y<ROWS;y++){
+    for(let x=0;x<COLS;x++){
+      const c = cells[y][x];
+      const existingPlayer = c.querySelector('.player');
+      if(existingPlayer){ existingPlayer.parentNode.removeChild(existingPlayer); }
+      const bId = c.dataset.id;
+      if(bId){
+        if(completed.has(bId)){ c.classList.add('done'); } else { c.classList.remove('done'); }
+      }
+    }
+  }
+  const cell = cells[player.y][player.x];
+  const p = document.createElement('span');
+  p.className = 'player';
+  p.textContent = '\u{1F9D1}';
+  cell.appendChild(p);
+
+  energyFill.style.width = Math.max(0, energy) + '%';
+  const hour = 7 + Math.round(((START_ENERGY - energy) / START_ENERGY) * 10);
+  timeOut.textContent = Math.min(hour,17) + 'h00';
+  tasksOut.textContent = completed.size + '/' + buildings.length;
+
+  taskListEl.innerHTML = '';
+  buildings.forEach(b => {
+    const done = completed.has(b.id);
+    const row = document.createElement('div');
+    row.className = 'task' + (done ? ' complete' : '');
+    row.innerHTML = '<span class="box"></span><span>' + b.task + '</span>';
+    taskListEl.appendChild(row);
+  });
+}
+
+function move(dx,dy){
+  if(overlay.classList.contains('show')) return;
+  const nx = player.x + dx, ny = player.y + dy;
+  if(nx < 0 || nx >= COLS || ny < 0 || ny >= ROWS) return;
+  if(energy <= 0) return;
+  player.x = nx;
+  player.y = ny;
+  energy = Math.max(0, energy - MOVE_COST);
+  const b = buildingAt(nx,ny);
+  msgEl.textContent = b ? ('Awa est arrivée : ' + b.name + '. Appuie sur Agir.') : 'Awa se déplace sur le campus.';
+  render();
+  checkEnd();
+}
+
+function act(){
+  if(overlay.classList.contains('show')) return;
+  const b = buildingAt(player.x, player.y);
+  if(!b){
+    msgEl.textContent = "Il n'y a rien à faire ici. Trouve un bâtiment en surbrillance.";
+    return;
+  }
+  if(completed.has(b.id)){
+    msgEl.textContent = 'Déjà fait ici : ' + b.name + '.';
+    return;
+  }
+  completed.add(b.id);
+  energy = Math.min(START_ENERGY, energy + 8);
+  msgEl.textContent = 'Tâche accomplie : ' + b.task + ' !';
+  render();
+  checkEnd();
+}
+
+function checkEnd(){
+  if(completed.size === buildings.length){
+    showOverlay('Journée réussie !', "Awa a terminé toutes ses tâches avec " + Math.round(energy) + "% d'énergie restante.");
+  } else if(energy <= 0){
+    showOverlay('Journée trop courte', "Awa n'a pas eu assez d'énergie pour tout finir (" + completed.size + '/' + buildings.length + ' tâches).');
+  }
+}
+
+function showOverlay(title, text){
+  document.getElementById('overlay-title').textContent = title;
+  document.getElementById('overlay-text').textContent = text;
+  overlay.classList.add('show');
+}
+
+function reset(){
+  player = {x:0, y:5};
+  energy = START_ENERGY;
+  completed = new Set();
+  overlay.classList.remove('show');
+  msgEl.textContent = 'Déplace Awa avec les flèches. Arrive sur un bâtiment en surbrillance puis appuie sur Agir.';
+  render();
+}
+
+document.getElementById('btn-up').addEventListener('click', () => move(0,-1));
+document.getElementById('btn-down').addEventListener('click', () => move(0,1));
+document.getElementById('btn-left').addEventListener('click', () => move(-1,0));
+document.getElementById('btn-right').addEventListener('click', () => move(1,0));
+document.getElementById('btn-action').addEventListener('click', act);
+document.getElementById('overlay-btn').addEventListener('click', reset);
+
+document.addEventListener('keydown', (e) => {
+  if(e.key === 'ArrowUp') move(0,-1);
+  if(e.key === 'ArrowDown') move(0,1);
+  if(e.key === 'ArrowLeft') move(-1,0);
+  if(e.key === 'ArrowRight') move(1,0);
+  if(e.key === ' ' || e.key === 'Enter') act();
+});
+
+buildBoard();
+</script>
+</body>
+</html>
